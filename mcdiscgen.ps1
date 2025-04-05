@@ -55,10 +55,10 @@ if (-not $fork) {
 }
 
 ### Powershell enforcements
-[System.IO.Directory]::SetCurrentDirectory($pwd)
 $ErrorActionPreference = "Stop"
 $WarningPreference = "Stop"
-
+$ErrorView = 'DetailedView'
+[System.IO.Directory]::SetCurrentDirectory($pwd)
 
 ### Function declarations
 function Get-Base26 {
@@ -362,7 +362,8 @@ Get-ChildItem -File -LiteralPath $in_dir_audios |
 			"-b:a", $bitrate, 
 			"-ar", $samplerate, 
 			"-map_metadata", "-1",
-			"-vn", "-ac", 1,
+			"-vn", 
+			"-ac", 1,
 			"-f", "ogg"
 			$dst_file
 		)
