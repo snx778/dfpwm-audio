@@ -144,7 +144,7 @@ function Update-Cache {
 
 function Clean-Outdated-Cache {
 	param($all_lookup, $files_seen, $action)
-	foreach ($kvp in $all_lookup.GetEnumerator()) {
+	foreach ($kvp in $all_lookup.Clone().GetEnumerator()) {
 		$hash = $kvp.Key
 		$meta = $kvp.Value
 		$path = Safe-Join $cache_dir $hash
@@ -329,7 +329,7 @@ $json_dp_loot_table_creeper = @{
 ### Update cover cache
 Write-Host "### Updating cache indices for the covers"
 $covers_seen = @{}
-Get-ChildItem -File -Path $covers_dir -Filter "*.png" |
+Get-ChildItem -File -LiteralPath $covers_dir -Filter "*.png" |
 	Update-Cache $PROJ_CFG.covers $covers_seen {
 		param($src_file, $sha512)
 		
@@ -347,7 +347,7 @@ Get-ChildItem -File -Path $covers_dir -Filter "*.png" |
 ### Update audio cache
 Write-Host "### Updating cache indices for the tracks"
 $tracks_seen = @{}
-Get-ChildItem -File -Path $in_dir_audios |
+Get-ChildItem -File -LiteralPath $in_dir_audios |
 	Where-Object { $_.Extension -in ".mp3", ".m4a", ".ogg", ".wav", ".webm" } |
 	Update-Cache $PROJ_CFG.files $tracks_seen {
 		param($src_file, $sha512)
@@ -366,12 +366,24 @@ Get-ChildItem -File -Path $in_dir_audios |
 			"-f", "ogg"
 			$dst_file
 		)
-
-		ffmpeg @ffmpeg_args
+		$ffprobe_args = @(
+			"-i", $dst_file,
+			"-show_entries", "format=duration",
+			"-v", "quiet", 
+			"-of", "csv=p=0"
+		)
 		
-		$duration_secs = $null
-		if ($LASTEXITCODE -eq 0) {
-			$duration_secs = ffprobe -i $dst_file -show_entries format=duration -v quiet -of csv="p=0"
+		if (-not (Exists $dst_file)) {
+			ffmpeg @ffmpeg_args
+		} else {
+			$LASTEXITCODE = 0
+		}
+		$duration_secs = [float](ffprobe @ffprobe_args)
+		
+		
+		if (($LASTEXITCODE -ne 0) -or ($duration_secs -eq 0)) {
+			ffmpeg @ffmpeg_args
+			$duration_secs = [float](ffprobe @ffprobe_args)
 		}
 		
 		if ($LASTEXITCODE -eq 0) {
@@ -383,12 +395,12 @@ Get-ChildItem -File -Path $in_dir_audios |
 				id = $PROJ_CFG.last_id
 				name = $mus_name
 				texture = (@($PROJ_CFG.covers.Values))[[Random]::Shared.Next(0, $PROJ_CFG.covers.Count)].name
-				duration = [float]$duration_secs
+				duration = $duration_secs
 				description = $_.BaseName
 			}
 		}
 		
-		Remove-Item -Path $dst_file -ErrorAction SilentlyContinue
+		Remove-Item -LiteralPath $dst_file -ErrorAction SilentlyContinue
 		Write-Host "Failed to cache `"$src_file`""
 	}
 Clean-Outdated-Cache $PROJ_CFG.files $tracks_seen {
@@ -396,15 +408,14 @@ Clean-Outdated-Cache $PROJ_CFG.files $tracks_seen {
 	
 	$data_haschanged = $true
 	$dst_file = Safe-Join $cache_dir_audio $sha512
-	Remove-Item -LiteralPath $dst_file
-	Write-Host "Removed `"$meta.$name`" from cache"
+	Remove-Item -LiteralPath $dst_file -ErrorAction SilentlyContinue
+	Write-Host "Removed `"$($meta.name)`" from cache"
 	return $true
 }
 
 
 ### Save cached indices
 $PROJ_CFG | To-Json > $cache_music_ids
-
 
 ### Incremental updates check
 $data_haschanged = $force -or $data_haschanged -or
