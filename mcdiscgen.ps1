@@ -156,9 +156,15 @@ function Clean-Outdated-Cache {
 	}
 }
 
+### Validate input paths
+if (-not (Exists $in_dir_audios $covers_dir)) {
+	Write-Host "Invalid input paths provided."
+	return
+}
+
 
 ### Variable declarations
-$data_haschanged	= $false
+$data_haschanged	= @($false)
 $cache_dir 			= Safe-Join $out_dir_project ".cache"
 
 $ffmpeg_dir			= Safe-Join $cache_dir "ffmpeg-bin"
@@ -352,7 +358,7 @@ Get-ChildItem -File -LiteralPath $in_dir_audios |
 	Update-Cache $PROJ_CFG.files $tracks_seen {
 		param($src_file, $sha512)
 		
-		$data_haschanged = $true
+		$data_haschanged[0] = $true
 		$dst_file = Safe-Join $cache_dir_audio $sha512
 		$ffmpeg_args = @(
 			"-y", 
@@ -407,7 +413,7 @@ Get-ChildItem -File -LiteralPath $in_dir_audios |
 Clean-Outdated-Cache $PROJ_CFG.files $tracks_seen {
 	param($sha512, $meta)
 	
-	$data_haschanged = $true
+	$data_haschanged[0] = $true
 	$dst_file = Safe-Join $cache_dir_audio $sha512
 	Remove-Item -LiteralPath $dst_file -ErrorAction SilentlyContinue
 	Write-Host "Removed `"$($meta.name)`" from cache"
@@ -419,10 +425,10 @@ Clean-Outdated-Cache $PROJ_CFG.files $tracks_seen {
 $PROJ_CFG | To-Json > $cache_music_ids
 
 ### Incremental updates check
-$data_haschanged = $force -or $data_haschanged -or
+$data_haschanged[0] = $force -or $data_haschanged[0] -or
 	($archived -and (-not (Exists $rp_zip $dp_zip)))
 
-if (-not $data_haschanged) {
+if (-not $data_haschanged[0]) {
 	Write-Host "### All packs are up-to-date."
 	return
 } else {
