@@ -13,4 +13,4 @@ This is a music repository encoded in the [DFPWM](https://wiki.vexatos.com/dfpwm
 1. Install [ffmpeg](https://www.ffmpeg.org/).
 2. Download the [LionRay](https://github.com/BlueAmulet/LionRay) wav to DFPWM audio converter.
 3. With the command `ffmpeg -i <input-audio>.mp3 <output-audio>.wav` (in your system's shell) convert your file to the `.wav` format.
-4. With the help of LionRay convert your wav file into the DFPWM format **(make sure that you unchecked the `DFPWM1a` option)**.
+4. With the help of LionRay convert your wav file into the DFPWM format **(For 1.7.10, make sure that you unchecked the `DFPWM1a` option)**.
